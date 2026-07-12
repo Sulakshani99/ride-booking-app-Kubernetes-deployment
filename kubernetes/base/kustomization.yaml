@@ -1,0 +1,47 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ridebooking
+
+resources:
+  # ==========================================
+  # 1. CORE INFRASTRUCTURE LAYER
+  # ==========================================
+  - infrastructure/namespace.yaml
+  - infrastructure/serviceaccount.yaml
+
+  # ==========================================
+  # 2. DATABASE LAYER
+  # ==========================================
+  - services/mysql/pvc.yaml
+  - services/mysql/deployment.yaml
+  - services/mysql/service.yaml
+
+  # ==========================================
+  # 3. MICROSERVICES LAYER
+  # ==========================================
+  # Auth Service
+  - services/auth-service/deployment.yaml
+  - services/auth-service/service.yaml
+  - services/auth-service/configmap.yaml
+
+  # Ride Service
+  - services/ride-service/deployment.yaml
+  - services/ride-service/service.yaml
+  - services/ride-service/configmap.yaml
+
+  # Payment Service
+  - services/payment-service/deployment.yaml
+  - services/payment-service/service.yaml
+  - services/payment-service/configmap.yaml
+
+  # Notification Service
+  - services/notification-service/deployment.yaml
+  - services/notification-service/service.yaml
+  - services/notification-service/configmap.yaml
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/name: ridebooking
+  app.kubernetes.io/version: "1.0"
+  managed-by: kustomize

@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+images:
+  - name: auth-service
+    newName: auth-service
+    newTag: prod
+  - name: ride-service
+    newName: ride-service
+    newTag: prod
+  - name: payment-service
+    newName: payment-service
+    newTag: prod
+  - name: notification-service
+    newName: notification-service
+    newTag: prod
+
+replicas:
+  - name: auth-service
+    count: 2
+  - name: ride-service
+    count: 2
+  - name: payment-service
+    count: 2
+  - name: notification-service
+    count: 2
