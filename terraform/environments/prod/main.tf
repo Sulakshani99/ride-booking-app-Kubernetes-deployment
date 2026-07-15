@@ -27,7 +27,7 @@ module "eks" {
   node_desired_size   = 3
   node_max_size       = 6
   node_min_size       = 2
-  node_instance_types = ["t3.large"]
+  node_instance_types = ["t3.small"]
 
   tags = {
     Environment = var.environment
@@ -40,7 +40,7 @@ module "database" {
   source = "../../modules/aws/database"
 
   environment                   = var.environment
-  db_instance_class             = "db.t3.medium"
+  db_instance_class             = "db.t3.micro"
   db_name                       = "ridebooking_db"
   private_subnet_ids            = module.foundation.private_subnet_ids
   vpc_id                        = module.foundation.vpc_id
@@ -79,23 +79,44 @@ module "messaging" {
 }
 
 resource "aws_iam_role_policy" "sqs_access" {
-  name = "${var.environment}-ridebooking-sqs-access"
+  name = "${var.environment}-ridebooking-app-runtime-access"
   role = module.eks.secrets_role_id
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "sqs:SendMessage",
-        "sqs:ReceiveMessage",
-        "sqs:DeleteMessage",
-        "sqs:GetQueueAttributes"
-      ]
-      Resource = [
-        module.messaging.payment_queue_arn,
-        module.messaging.notification_queue_arn
-      ]
-    }]
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "sqs:SendMessage",
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes"
+        ]
+        Resource = [
+          module.messaging.payment_queue_arn,
+          module.messaging.notification_queue_arn
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ses:SendEmail",
+          "ses:SendRawEmail"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = [
+          module.database.db_secret_arn,
+          aws_secretsmanager_secret.app_runtime.arn
+        ]
+      }
+    ]
   })
 }

@@ -3,9 +3,23 @@ kind: Kustomization
 
 resources:
   - ../../base
-  - ../../base/services/mysql/pvc.yaml
-  - ../../base/services/mysql/deployment.yaml
-  - ../../base/services/mysql/service.yaml
+  - ../../base/services/mysql
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+secretGenerator:
+  - name: db-secret
+    namespace: ridebooking
+    literals:
+      - MYSQL_ROOT_PASSWORD=dev-change-me
+  - name: app-runtime-secret
+    namespace: ridebooking
+    literals:
+      - JWT_SECRET=dev-base64-jwt-secret-change-me
+      - APP_ADMIN_PASSWORD=dev-admin-change-me
+      - AWS_REGION=us-east-1
+      - AWS_SES_FROM=noreply@example.com
 
 images:
   - name: auth-service

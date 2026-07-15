@@ -10,7 +10,7 @@ resource "aws_sqs_queue" "payment_events" {
 
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.payment_dlq.arn
-    maxReceiveCount      = 5
+    maxReceiveCount     = 5
   })
 
   tags = var.tags
@@ -28,7 +28,7 @@ resource "aws_sqs_queue" "notification_events" {
 
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.notification_dlq.arn
-    maxReceiveCount      = 5
+    maxReceiveCount     = 5
   })
 
   tags = var.tags

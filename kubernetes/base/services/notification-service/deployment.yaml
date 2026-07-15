@@ -32,17 +32,12 @@ spec:
           envFrom:
             - configMapRef:
                 name: notification-service-config
+            - secretRef:
+                name: app-runtime-secret
+                optional: true
           env:
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: db-secret
                   key: MYSQL_ROOT_PASSWORD
-            - name: AWS_ACCESS_KEY_ID
-              value: ""
-            - name: AWS_SECRET_ACCESS_KEY
-              value: ""
-            - name: AWS_REGION
-              value: us-east-1
-            - name: AWS_SES_FROM
-              value: noreply@email.tasheedevops.me

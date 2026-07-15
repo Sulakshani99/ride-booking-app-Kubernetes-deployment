@@ -93,15 +93,34 @@ Each environment directory (`dev`, `staging`, `prod`) uses Kustomize to override
 
 ### Secrets Management
 
-Database credentials are stored in `db-secret` (created separately):
+Dev uses generated Kubernetes Secrets from `kubernetes/environments/dev/kustomization.yaml`.
+
+Staging/prod use AWS Secrets Manager through External Secrets Operator:
+
+- Terraform creates `${environment}/ridebooking/db`
+- Terraform creates `${environment}/ridebooking/app`
+- `SecretStore` authenticates to AWS using IRSA and `ridebooking-sa`
+- `ExternalSecret` creates Kubernetes `db-secret` and `app-runtime-secret`
+
+Install External Secrets Operator before applying staging/prod app manifests:
 
 ```bash
-kubectl create secret generic db-secret \
-  --from-literal=MYSQL_ROOT_PASSWORD=your-password \
-  -n ridebooking
+helm repo add external-secrets https://charts.external-secrets.io
+helm repo update
+helm install external-secrets external-secrets/external-secrets \
+  -n external-secrets \
+  --create-namespace \
+  --set installCRDs=true
 ```
 
-Alternatively, use an external secrets operator (e.g., External Secrets, Sealed Secrets) for secure secret management.
+Pass secret values to Terraform without committing them:
+
+```bash
+terraform -chdir=terraform/environments/prod apply \
+  -var="db_password=<strong-db-password>" \
+  -var="jwt_secret=<base64-jwt-secret>" \
+  -var="admin_password=<strong-admin-password>"
+```
 
 ### ConfigMaps
 
@@ -146,30 +165,20 @@ Update the `image:` fields in `base/services/*/deployment.yaml`.
 ## Networking
 
 - Services are exposed via `ClusterIP` (internal only)
-- For external access, add an `Ingress` in `base/infrastructure/ingress.yaml`
-- Or use `NodePort`/`LoadBalancer` service types
+- Staging/prod include an AWS ALB `Ingress` from `base/ingress`
+- Terraform installs the AWS Load Balancer Controller for staging/prod
 
-Example Ingress (optional):
+Before applying staging/prod manifests, replace placeholders in the overlay with Terraform outputs:
 
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: ridebooking-ingress
-  namespace: ridebooking
-spec:
-  rules:
-    - host: api.example.com
-      http:
-        paths:
-          - path: /auth
-            pathType: Prefix
-            backend:
-              service:
-                name: auth-service
-                port:
-                  number: 8081
+```bash
+terraform -chdir=terraform/environments/prod output
 ```
+
+Use:
+- `irsa_service_account_role_arn` in `patches/aws-serviceaccount-patch.yaml`
+- `db_endpoint` host part in the RDS ConfigMap patch
+- `ecr_repository_urls` in `images[].newName`
+- `payment_queue_url` and `notification_queue_url` in `app-runtime-secret`
 
 ## Troubleshooting
 

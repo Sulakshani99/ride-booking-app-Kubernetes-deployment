@@ -4,7 +4,7 @@ metadata:
   name: auth-service-config
   namespace: ridebooking
 data:
-  DB_HOST: "<prod-rds-host-without-port>"
+  DB_HOST: "<staging-rds-host-without-port>"
   DB_USERNAME: "ride_admin"
 ---
 apiVersion: v1
@@ -13,7 +13,7 @@ metadata:
   name: ride-service-config
   namespace: ridebooking
 data:
-  DB_HOST: "<prod-rds-host-without-port>"
+  DB_HOST: "<staging-rds-host-without-port>"
   DB_USERNAME: "ride_admin"
 ---
 apiVersion: v1
@@ -22,7 +22,7 @@ metadata:
   name: payment-service-config
   namespace: ridebooking
 data:
-  DB_HOST: "<prod-rds-host-without-port>"
+  DB_HOST: "<staging-rds-host-without-port>"
   DB_USERNAME: "ride_admin"
 ---
 apiVersion: v1
@@ -31,5 +31,5 @@ metadata:
   name: notification-service-config
   namespace: ridebooking
 data:
-  DB_HOST: "<prod-rds-host-without-port>"
+  DB_HOST: "<staging-rds-host-without-port>"
   DB_USERNAME: "ride_admin"

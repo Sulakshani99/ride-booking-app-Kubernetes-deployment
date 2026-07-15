@@ -26,3 +26,11 @@ output "notification_queue_url" {
   value = module.messaging.notification_queue_url
 }
 
+output "irsa_service_account_role_arn" {
+  value = module.eks.secrets_role_arn
+}
+
+output "app_runtime_secret_name" {
+  value = aws_secretsmanager_secret.app_runtime.name
+}
+

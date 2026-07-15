@@ -27,3 +27,13 @@ output "secrets_role_arn" {
   description = "ARN of the IAM role used for IRSA (pod-level AWS access)"
   value       = aws_iam_role.secrets_role.arn
 }
+
+output "oidc_provider_arn" {
+  description = "ARN of the EKS OIDC provider"
+  value       = aws_iam_openid_connect_provider.main.arn
+}
+
+output "oidc_provider_url" {
+  description = "EKS OIDC provider URL without https://"
+  value       = replace(aws_iam_openid_connect_provider.main.url, "https://", "")
+}

@@ -32,6 +32,9 @@ spec:
           envFrom:
             - configMapRef:
                 name: auth-service-config
+            - secretRef:
+                name: app-runtime-secret
+                optional: true
           env:
             - name: DB_PASSWORD
               valueFrom:

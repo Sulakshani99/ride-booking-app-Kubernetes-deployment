@@ -38,3 +38,18 @@ variable "db_password" {
   type      = string
   sensitive = true
 }
+
+variable "jwt_secret" {
+  type      = string
+  sensitive = true
+}
+
+variable "admin_password" {
+  type      = string
+  sensitive = true
+}
+
+variable "ses_from" {
+  type    = string
+  default = "noreply@email.tasheedevops.me"
+}

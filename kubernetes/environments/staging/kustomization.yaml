@@ -3,19 +3,26 @@ kind: Kustomization
 
 resources:
   - ../../base
+  - ../../base/ingress
+  - ../../base/external-secrets
+
+patches:
+  - path: patches/rds-config-patch.yaml
+  - path: patches/aws-serviceaccount-patch.yaml
+  - path: patches/external-secrets-patch.yaml
 
 images:
   - name: auth-service
-    newName: auth-service
+    newName: <account_id>.dkr.ecr.us-east-1.amazonaws.com/staging-auth-service
     newTag: staging
   - name: ride-service
-    newName: ride-service
+    newName: <account_id>.dkr.ecr.us-east-1.amazonaws.com/staging-ride-service
     newTag: staging
   - name: payment-service
-    newName: payment-service
+    newName: <account_id>.dkr.ecr.us-east-1.amazonaws.com/staging-payment-service
     newTag: staging
   - name: notification-service
-    newName: notification-service
+    newName: <account_id>.dkr.ecr.us-east-1.amazonaws.com/staging-notification-service
     newTag: staging
 
 replicas:
