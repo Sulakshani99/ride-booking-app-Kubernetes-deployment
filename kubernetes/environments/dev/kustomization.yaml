@@ -3,6 +3,9 @@ kind: Kustomization
 
 resources:
   - ../../base
+  - ../../base/services/mysql/pvc.yaml
+  - ../../base/services/mysql/deployment.yaml
+  - ../../base/services/mysql/service.yaml
 
 images:
   - name: auth-service

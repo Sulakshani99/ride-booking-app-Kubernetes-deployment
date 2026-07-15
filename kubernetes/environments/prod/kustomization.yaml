@@ -4,6 +4,9 @@ kind: Kustomization
 resources:
   - ../../base
 
+patches:
+  - path: patches/db-host-patch.yaml
+
 images:
   - name: auth-service
     newName: auth-service

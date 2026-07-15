@@ -11,14 +11,7 @@ resources:
   - infrastructure/serviceaccount.yaml
 
   # ==========================================
-  # 2. DATABASE LAYER
-  # ==========================================
-  - services/mysql/pvc.yaml
-  - services/mysql/deployment.yaml
-  - services/mysql/service.yaml
-
-  # ==========================================
-  # 3. MICROSERVICES LAYER
+  # 2. MICROSERVICES LAYER
   # ==========================================
   # Auth Service
   - services/auth-service/deployment.yaml

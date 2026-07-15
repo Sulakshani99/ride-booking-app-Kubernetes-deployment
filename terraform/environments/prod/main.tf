@@ -66,3 +66,36 @@ module "registry" {
     ManagedBy   = "terraform"
   }
 }
+
+module "messaging" {
+  source = "../../modules/aws/messaging"
+
+  environment = var.environment
+  tags = {
+    Environment = var.environment
+    Project     = "ride-booking-app"
+    ManagedBy   = "terraform"
+  }
+}
+
+resource "aws_iam_role_policy" "sqs_access" {
+  name = "${var.environment}-ridebooking-sqs-access"
+  role = module.eks.secrets_role_id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "sqs:SendMessage",
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage",
+        "sqs:GetQueueAttributes"
+      ]
+      Resource = [
+        module.messaging.payment_queue_arn,
+        module.messaging.notification_queue_arn
+      ]
+    }]
+  })
+}

@@ -17,3 +17,12 @@ output "db_endpoint" {
 output "ecr_repository_urls" {
   value = module.registry.repository_urls
 }
+
+output "payment_queue_url" {
+  value = module.messaging.payment_queue_url
+}
+
+output "notification_queue_url" {
+  value = module.messaging.notification_queue_url
+}
+
