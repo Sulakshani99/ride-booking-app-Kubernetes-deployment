@@ -89,6 +89,11 @@
             <artifactId>sqs</artifactId>
             <version>2.30.25</version>
         </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>sts</artifactId>
+            <version>2.30.25</version>
+        </dependency>
     </dependencies>
 
     <build>

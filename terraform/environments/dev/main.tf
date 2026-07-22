@@ -19,7 +19,7 @@ module "eks" {
 
   environment        = var.environment
   cluster_name       = var.cluster_name
-  kubernetes_version = "1.29"
+  kubernetes_version = "1.34"
 
   vpc_id             = module.foundation.vpc_id
   private_subnet_ids = module.foundation.private_subnet_ids

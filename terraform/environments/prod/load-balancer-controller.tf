@@ -84,6 +84,16 @@ resource "helm_release" "aws_load_balancer_controller" {
   namespace  = "kube-system"
 
   set {
+    name  = "region"
+    value = var.aws_region
+  }
+
+  set {
+    name  = "vpcId"
+    value = module.foundation.vpc_id
+  }
+
+  set {
     name  = "clusterName"
     value = module.eks.cluster_name
   }

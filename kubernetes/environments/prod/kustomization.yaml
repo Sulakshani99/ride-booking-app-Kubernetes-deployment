@@ -13,24 +13,24 @@ patches:
 
 images:
   - name: auth-service
-    newName: <account_id>.dkr.ecr.us-east-1.amazonaws.com/prod-auth-service
-    newTag: prod
+    newName: 688978191806.dkr.ecr.us-east-1.amazonaws.com/prod-auth-service
+    newTag: latest
   - name: ride-service
-    newName: <account_id>.dkr.ecr.us-east-1.amazonaws.com/prod-ride-service
-    newTag: prod
+    newName: 688978191806.dkr.ecr.us-east-1.amazonaws.com/prod-ride-service
+    newTag: latest
   - name: payment-service
-    newName: <account_id>.dkr.ecr.us-east-1.amazonaws.com/prod-payment-service
-    newTag: prod
+    newName: 688978191806.dkr.ecr.us-east-1.amazonaws.com/prod-payment-service
+    newTag: latest
   - name: notification-service
-    newName: <account_id>.dkr.ecr.us-east-1.amazonaws.com/prod-notification-service
-    newTag: prod
+    newName: 688978191806.dkr.ecr.us-east-1.amazonaws.com/prod-notification-service
+    newTag: latest
 
 replicas:
   - name: auth-service
-    count: 2
+    count: 1
   - name: ride-service
-    count: 2
+    count: 1
   - name: payment-service
-    count: 2
+    count: 1
   - name: notification-service
-    count: 2
+    count: 1

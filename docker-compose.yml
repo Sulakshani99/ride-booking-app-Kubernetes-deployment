@@ -3,7 +3,7 @@ services:
     image: mysql:8.0
     container_name: ride-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-Sula@991215}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
     ports:
       - "3306:3306"
     command: --default-authentication-plugin=mysql_native_password
@@ -24,7 +24,7 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_USERNAME: root
-      DB_PASSWORD: ${DB_PASSWORD:-Sula@991215}
+      DB_PASSWORD: ${DB_PASSWORD}
     ports:
       - "8081:8081"
 
@@ -38,7 +38,7 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_USERNAME: root
-      DB_PASSWORD: ${DB_PASSWORD:-Sula@991215}
+      DB_PASSWORD: ${DB_PASSWORD}
     ports:
       - "8082:8082"
 
@@ -52,7 +52,7 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_USERNAME: root
-      DB_PASSWORD: ${DB_PASSWORD:-Sula@991215}
+      DB_PASSWORD: ${DB_PASSWORD}
     ports:
       - "8083:8083"
 
@@ -66,9 +66,9 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_USERNAME: root
-      DB_PASSWORD: ${DB_PASSWORD:-Sula@991215}
-      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
-      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      DB_PASSWORD: ${DB_PASSWORD}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       AWS_REGION: ${AWS_REGION:-us-east-1}
       AWS_SES_FROM: ${AWS_SES_FROM:-noreply@email.tasheedevops.me}
     ports:

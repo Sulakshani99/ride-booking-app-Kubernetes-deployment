@@ -19,7 +19,7 @@ module "eks" {
 
   environment        = var.environment
   cluster_name       = var.cluster_name
-  kubernetes_version = "1.29"
+  kubernetes_version = "1.34"
 
   vpc_id             = module.foundation.vpc_id
   private_subnet_ids = module.foundation.private_subnet_ids
@@ -41,7 +41,6 @@ module "database" {
 
   environment                   = var.environment
   db_instance_class             = "db.t3.micro"
-  db_name                       = "ridebooking_db"
   private_subnet_ids            = module.foundation.private_subnet_ids
   vpc_id                        = module.foundation.vpc_id
   db_username                   = var.db_username

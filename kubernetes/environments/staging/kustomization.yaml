@@ -13,16 +13,16 @@ patches:
 
 images:
   - name: auth-service
-    newName: <account_id>.dkr.ecr.us-east-1.amazonaws.com/staging-auth-service
+    newName: 688978191806.dkr.ecr.us-east-1.amazonaws.com/staging-auth-service
     newTag: staging
   - name: ride-service
-    newName: <account_id>.dkr.ecr.us-east-1.amazonaws.com/staging-ride-service
+    newName: 688978191806.dkr.ecr.us-east-1.amazonaws.com/staging-ride-service
     newTag: staging
   - name: payment-service
-    newName: <account_id>.dkr.ecr.us-east-1.amazonaws.com/staging-payment-service
+    newName: 688978191806.dkr.ecr.us-east-1.amazonaws.com/staging-payment-service
     newTag: staging
   - name: notification-service
-    newName: <account_id>.dkr.ecr.us-east-1.amazonaws.com/staging-notification-service
+    newName: 688978191806.dkr.ecr.us-east-1.amazonaws.com/staging-notification-service
     newTag: staging
 
 replicas:

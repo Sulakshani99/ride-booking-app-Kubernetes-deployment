@@ -74,9 +74,8 @@
         </dependency>
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
-            <artifactId>sqs</artifactId>
+            <artifactId>sts</artifactId>
             <version>2.30.25</version>
-            <scope>compile</scope>
         </dependency>
     </dependencies>
 
