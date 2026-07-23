@@ -63,21 +63,24 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
         with:
-          terraform_version: 1.6.0
+          terraform_version: 1.13.1
 
       - name: Terraform format check
         working-directory: ${{ env.TERRAFORM_DIRECTORY }}
-
         run: terraform fmt -check -recursive
 
-      - name: Terraform init
+      - name: Clean Terraform cache
         working-directory: ${{ env.TERRAFORM_DIRECTORY }}
+        run: |
+          rm -rf .terraform
+          rm -f .terraform.lock.hcl
 
-        run: terraform init
+      - name: Terraform Init
+        working-directory: ${{ env.TERRAFORM_DIRECTORY }}
+        run: terraform init -upgrade
 
       - name: Terraform validate
         working-directory: ${{ env.TERRAFORM_DIRECTORY }}
-
         run: terraform validate
 
       - name: Terraform plan
