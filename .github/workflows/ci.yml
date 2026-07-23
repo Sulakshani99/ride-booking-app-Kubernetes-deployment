@@ -296,6 +296,21 @@ jobs:
           echo "Payment image:      ${PAYMENT_IMAGE:-not built}"
           echo "Notification image: ${NOTIFICATION_IMAGE:-not built}"
 
+      - name: Install Kustomize
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          KUSTOMIZE_VERSION="5.7.1"
+
+          curl -sSLo kustomize.tar.gz \
+            "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz"
+
+          tar -xzf kustomize.tar.gz
+          sudo mv kustomize /usr/local/bin/kustomize
+
+          kustomize version
+
       - name: Update changed service images
         shell: bash
         env:
@@ -306,97 +321,54 @@ jobs:
         run: |
           set -euo pipefail
 
-          MANIFEST_DIRECTORY="kubernetes/environments/prod"
+          PROD_OVERLAY="kubernetes/environments/prod"
 
-          if [[ ! -d "$MANIFEST_DIRECTORY" ]]; then
-            echo "::error::Kubernetes production directory does not exist:"
-            echo "$MANIFEST_DIRECTORY"
+          if [[ ! -f "$PROD_OVERLAY/kustomization.yaml" ]]; then
+            echo "::error::Production kustomization.yaml was not found."
             exit 1
           fi
 
-          update_image() {
-            local service_name="$1"
-            local repository_name="$2"
-            local new_image="$3"
+          cd "$PROD_OVERLAY"
 
-            # The service was intentionally skipped.
-            if [[ -z "$new_image" ]]; then
-              echo "$service_name was not built. Its manifest will not be changed."
-              return 0
-            fi
+          if [[ -n "${AUTH_IMAGE:-}" ]]; then
+            echo "Updating auth-service to $AUTH_IMAGE"
+            kustomize edit set image \
+              auth-service="$AUTH_IMAGE"
+          else
+            echo "Auth service was not built. Skipping image update."
+          fi
 
-            echo "----------------------------------------"
-            echo "Updating $service_name"
-            echo "Repository: $repository_name"
-            echo "New image:  $new_image"
-            echo "----------------------------------------"
+          if [[ -n "${RIDE_IMAGE:-}" ]]; then
+            echo "Updating ride-service to $RIDE_IMAGE"
+            kustomize edit set image \
+              ride-service="$RIDE_IMAGE"
+          else
+            echo "Ride service was not built. Skipping image update."
+          fi
 
-            # Find production YAML files currently containing this ECR
-            # repository in an image declaration.
-            mapfile -t MATCHING_FILES < <(
-              grep -RIlE \
-                "^[[:space:]]*image:[[:space:]]*.*${repository_name}:" \
-                "$MANIFEST_DIRECTORY" \
-                --include="*.yaml" \
-                --include="*.yml" \
-                || true
-            )
+          if [[ -n "${PAYMENT_IMAGE:-}" ]]; then
+            echo "Updating payment-service to $PAYMENT_IMAGE"
+            kustomize edit set image \
+              payment-service="$PAYMENT_IMAGE"
+          else
+            echo "Payment service was not built. Skipping image update."
+          fi
 
-            if [[ "${#MATCHING_FILES[@]}" -eq 0 ]]; then
-              echo "::error::No production manifest containing $repository_name was found."
-              echo "Searched inside: $MANIFEST_DIRECTORY"
-              exit 1
-            fi
+          if [[ -n "${NOTIFICATION_IMAGE:-}" ]]; then
+            echo "Updating notification-service to $NOTIFICATION_IMAGE"
+            kustomize edit set image \
+              notification-service="$NOTIFICATION_IMAGE"
+          else
+            echo "Notification service was not built. Skipping image update."
+          fi
 
-            echo "Matching manifest files:"
+          echo "Updated production kustomization:"
+          cat kustomization.yaml
 
-            for file in "${MATCHING_FILES[@]}"; do
-              echo "  - $file"
+          echo "Validating rendered manifests:"
+          kustomize build . > /tmp/rendered-manifests.yaml
 
-              # Replace the complete image value while preserving indentation.
-              sed -i -E \
-                "s|^([[:space:]]*image:[[:space:]]*).*${repository_name}:[^[:space:]\"']+|\1${new_image}|" \
-                "$file"
-
-              if ! grep -Fq "image: $new_image" "$file"; then
-                echo "::error::Image replacement failed in $file"
-                exit 1
-              fi
-            done
-
-            echo "$service_name image was updated successfully."
-          }
-
-          update_image \
-            "auth-service" \
-            "prod-auth-service" \
-            "${AUTH_IMAGE:-}"
-
-          update_image \
-            "ride-service" \
-            "prod-ride-service" \
-            "${RIDE_IMAGE:-}"
-
-          update_image \
-            "payment-service" \
-            "prod-payment-service" \
-            "${PAYMENT_IMAGE:-}"
-
-          update_image \
-            "notification-service" \
-            "prod-notification-service" \
-            "${NOTIFICATION_IMAGE:-}"
-
-          echo "----------------------------------------"
-          echo "Updated image declarations"
-          echo "----------------------------------------"
-
-          grep -RInE \
-            "^[[:space:]]*image:" \
-            "$MANIFEST_DIRECTORY" \
-            --include="*.yaml" \
-            --include="*.yml" \
-            || true
+          grep -n "image:" /tmp/rendered-manifests.yaml
 
       - name: Commit and push manifest changes
         shell: bash
