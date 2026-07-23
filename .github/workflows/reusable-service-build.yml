@@ -30,7 +30,7 @@ permissions:
 env:
   AWS_REGION: us-east-1
   CI_DB_PASSWORD: ci-password
-  CI_JWT_SECRET: ci-only-jwt-secret-that-is-never-used-in-production
+  CI_JWT_SECRET: q7P4p4p+gK38s0fC1lM3nV0aX2Zt9wJ6dE8rQ5uY7iA=
 
 jobs:
   build-and-push:
