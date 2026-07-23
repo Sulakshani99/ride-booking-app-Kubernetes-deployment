@@ -84,18 +84,7 @@ module "github_actions" {
   github_repository = "ride-booking-app-Kubernetes-deployment"
   github_branch     = "main"
 
-  aws_region  = var.aws_region
   environment = var.environment
-
-  terraform_state_bucket_name = "ridebooking-terraform-state-2026"
-  terraform_lock_table_name   = "ridebooking-terraform-lock"
-
-  ecr_repository_names = [
-    "prod-auth-service",
-    "prod-ride-service",
-    "prod-payment-service",
-    "prod-notification-service"
-  ]
 
   tags = var.tags
 }

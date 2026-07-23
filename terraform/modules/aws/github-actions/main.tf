@@ -1,8 +1,10 @@
-data "aws_caller_identity" "current" {}
-
 data "tls_certificate" "github_actions" {
   url = "https://token.actions.githubusercontent.com"
 }
+
+# =========================================================
+# GitHub Actions OIDC provider
+# =========================================================
 
 resource "aws_iam_openid_connect_provider" "github_actions" {
   url = "https://token.actions.githubusercontent.com"
@@ -24,6 +26,10 @@ resource "aws_iam_openid_connect_provider" "github_actions" {
     }
   )
 }
+
+# =========================================================
+# GitHub Actions trust policy
+# =========================================================
 
 data "aws_iam_policy_document" "github_actions_assume_role" {
   statement {
@@ -51,6 +57,8 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
       ]
     }
 
+    # Only the configured branch of the configured repository
+    # can assume this AWS role.
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
@@ -62,10 +70,14 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
   }
 }
 
+# =========================================================
+# GitHub Actions IAM role
+# =========================================================
+
 resource "aws_iam_role" "github_actions" {
   name = "${var.environment}-ridebooking-github-actions-role"
 
-  description = "Allows GitHub Actions to push images to ECR and manage Terraform."
+  description = "Allows GitHub Actions to manage ride-booking AWS infrastructure through Terraform and push images to ECR."
 
   assume_role_policy = data.aws_iam_policy_document.github_actions_assume_role.json
 
@@ -82,130 +94,26 @@ resource "aws_iam_role" "github_actions" {
 }
 
 # =========================================================
-# ECR permissions
+# AWS-managed permissions
+#
+# PowerUserAccess:
+# EC2, VPC, EKS, ECR, RDS, S3, DynamoDB,
+# Secrets Manager, SQS, ELB, CloudWatch, etc.
+#
+# IAMFullAccess:
+# IAM roles, policies, OIDC providers and PassRole.
 # =========================================================
 
-data "aws_iam_policy_document" "github_actions_ecr" {
-  statement {
-    sid    = "AllowECRAuthentication"
-    effect = "Allow"
-
-    actions = [
-      "ecr:GetAuthorizationToken"
-    ]
-
-    resources = ["*"]
-  }
-
-  statement {
-    sid    = "AllowRideBookingECRPushAndRead"
-    effect = "Allow"
-
-    actions = [
-      "ecr:BatchCheckLayerAvailability",
-      "ecr:BatchGetImage",
-      "ecr:CompleteLayerUpload",
-      "ecr:GetDownloadUrlForLayer",
-      "ecr:InitiateLayerUpload",
-      "ecr:ListImages",
-      "ecr:PutImage",
-      "ecr:UploadLayerPart"
-    ]
-
-    resources = [
-      for repository_name in var.ecr_repository_names :
-      "arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/${repository_name}"
-    ]
+locals {
+  github_actions_managed_policy_arns = {
+    power_user = "arn:aws:iam::aws:policy/PowerUserAccess"
+    iam_full   = "arn:aws:iam::aws:policy/IAMFullAccess"
   }
 }
 
-resource "aws_iam_policy" "github_actions_ecr" {
-  name        = "${var.environment}-ridebooking-github-actions-ecr"
-  description = "Allows GitHub Actions to push ride-booking images."
-  policy      = data.aws_iam_policy_document.github_actions_ecr.json
+resource "aws_iam_role_policy_attachment" "github_actions_managed_policies" {
+  for_each = local.github_actions_managed_policy_arns
 
-  tags = merge(
-    var.tags,
-    {
-      Name        = "${var.environment}-ridebooking-github-actions-ecr"
-      Environment = var.environment
-      ManagedBy   = "Terraform"
-    }
-  )
-}
-
-resource "aws_iam_role_policy_attachment" "github_actions_ecr" {
   role       = aws_iam_role.github_actions.name
-  policy_arn = aws_iam_policy.github_actions_ecr.arn
-}
-
-# =========================================================
-# Terraform S3 backend permissions
-# =========================================================
-
-data "aws_iam_policy_document" "github_actions_terraform_backend" {
-  statement {
-    sid    = "AllowTerraformStateBucketAccess"
-    effect = "Allow"
-
-    actions = [
-      "s3:ListBucket",
-      "s3:GetBucketLocation"
-    ]
-
-    resources = [
-      "arn:aws:s3:::${var.terraform_state_bucket_name}"
-    ]
-  }
-
-  statement {
-    sid    = "AllowTerraformStateObjectAccess"
-    effect = "Allow"
-
-    actions = [
-      "s3:GetObject",
-      "s3:PutObject",
-      "s3:DeleteObject"
-    ]
-
-    resources = [
-      "arn:aws:s3:::${var.terraform_state_bucket_name}/*"
-    ]
-  }
-
-  statement {
-    sid    = "AllowTerraformDynamoDBStateLock"
-    effect = "Allow"
-
-    actions = [
-      "dynamodb:DescribeTable",
-      "dynamodb:GetItem",
-      "dynamodb:PutItem",
-      "dynamodb:DeleteItem"
-    ]
-
-    resources = [
-      "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/${var.terraform_lock_table_name}"
-    ]
-  }
-}
-
-resource "aws_iam_policy" "github_actions_terraform_backend" {
-  name        = "${var.environment}-ridebooking-github-actions-terraform-backend"
-  description = "Allows GitHub Actions to access the Terraform S3 backend."
-  policy      = data.aws_iam_policy_document.github_actions_terraform_backend.json
-
-  tags = merge(
-    var.tags,
-    {
-      Name        = "${var.environment}-ridebooking-github-actions-terraform-backend"
-      Environment = var.environment
-      ManagedBy   = "Terraform"
-    }
-  )
-}
-
-resource "aws_iam_role_policy_attachment" "github_actions_terraform_backend" {
-  role       = aws_iam_role.github_actions.name
-  policy_arn = aws_iam_policy.github_actions_terraform_backend.arn
+  policy_arn = each.value
 }
