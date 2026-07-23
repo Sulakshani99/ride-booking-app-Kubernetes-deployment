@@ -1,0 +1,140 @@
+name: Reusable Service Build
+
+on:
+  workflow_call:
+    inputs:
+      service_name:
+        description: Microservice name
+        required: true
+        type: string
+
+      service_path:
+        description: Microservice folder
+        required: true
+        type: string
+
+      ecr_repository:
+        description: ECR repository name
+        required: true
+        type: string
+
+    outputs:
+      image_uri:
+        description: Complete ECR image URI
+        value: ${{ jobs.build-and-push.outputs.image_uri }}
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+  CI_DB_PASSWORD: ci-password
+  CI_JWT_SECRET: ci-only-jwt-secret-that-is-never-used-in-production
+
+jobs:
+  build-and-push:
+    name: Build ${{ inputs.service_name }}
+    runs-on: ubuntu-latest
+
+    outputs:
+      image_uri: ${{ steps.image.outputs.image_uri }}
+
+    services:
+      mysql:
+        image: mysql:8.0
+
+        env:
+          MYSQL_ROOT_PASSWORD: ci-password
+
+        ports:
+          - 3306:3306
+
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci-password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: temurin
+          cache: maven
+          cache-dependency-path: ${{ inputs.service_path }}/pom.xml
+
+      - name: Make Maven wrapper executable
+        working-directory: ${{ inputs.service_path }}
+        run: chmod +x ./mvnw
+
+      - name: Run tests
+        working-directory: ${{ inputs.service_path }}
+
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USERNAME: root
+          DB_PASSWORD: ci-password
+
+          JWT_SECRET: cmlkZS1ib29raW5nLWNpLXRlc3Qtc2VjcmV0LWtleS0xMjM0NTY3ODkwMTIzNDU2Nzg5MA==
+
+          AWS_ACCESS_KEY_ID: test
+          AWS_SECRET_ACCESS_KEY: test
+          AWS_REGION: us-east-1
+
+          AWS_SQS_PAYMENT_QUEUE_URL: ""
+          AWS_SQS_NOTIFICATION_QUEUE_URL: ""
+          AWS_SES_FROM: test@example.com
+
+        run: ./mvnw clean test
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_GITHUB_ACTIONS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: github-${{ inputs.service_name }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image URI
+        id: image
+
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ inputs.ecr_repository }}
+          IMAGE_TAG: ${{ github.sha }}
+
+        run: |
+          IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+          echo "image_uri=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+          echo "Image URI: $IMAGE_URI"
+
+      - name: Build Docker image
+        env:
+          IMAGE_URI: ${{ steps.image.outputs.image_uri }}
+
+        run: |
+          docker build \
+            -t "$IMAGE_URI" \
+            "${{ inputs.service_path }}"
+
+      - name: Push Docker image
+        env:
+          IMAGE_URI: ${{ steps.image.outputs.image_uri }}
+
+        run: |
+          docker push "$IMAGE_URI"
+
+      - name: Build summary
+        run: |
+          echo "### ${{ inputs.service_name }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Image: \`${{ steps.image.outputs.image_uri }}\`" >> "$GITHUB_STEP_SUMMARY"

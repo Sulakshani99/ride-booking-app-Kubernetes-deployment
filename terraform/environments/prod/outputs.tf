@@ -34,3 +34,13 @@ output "app_runtime_secret_name" {
   value = aws_secretsmanager_secret.app_runtime.name
 }
 
+output "github_actions_role_arn" {
+  description = "IAM role assumed by GitHub Actions through OIDC."
+  value       = module.github_actions.role_arn
+}
+
+output "github_actions_oidc_provider_arn" {
+  description = "GitHub Actions OIDC provider ARN."
+  value       = module.github_actions.oidc_provider_arn
+}
+

@@ -1,0 +1,188 @@
+name: Ride Booking CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+    paths:
+      - "auth-service/**"
+      - "ride-service/**"
+      - "payment-service/**"
+      - "notification-service/**"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/reusable-service-build.yml"
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: ridebooking-production
+  cancel-in-progress: false
+
+jobs:
+  # ==========================================
+  # Auth Service
+  # ==========================================
+
+  auth-service:
+    name: Auth Service
+
+    uses: ./.github/workflows/reusable-service-build.yml
+
+    with:
+      service_name: auth-service
+      service_path: auth-service
+      ecr_repository: prod-auth-service
+
+  # ==========================================
+  # Ride Service
+  # ==========================================
+
+  ride-service:
+    name: Ride Service
+
+    uses: ./.github/workflows/reusable-service-build.yml
+
+    with:
+      service_name: ride-service
+      service_path: ride-service
+      ecr_repository: prod-ride-service
+
+  # ==========================================
+  # Payment Service
+  # ==========================================
+
+  payment-service:
+    name: Payment Service
+
+    uses: ./.github/workflows/reusable-service-build.yml
+
+    with:
+      service_name: payment-service
+      service_path: payment-service
+      ecr_repository: prod-payment-service
+
+  # ==========================================
+  # Notification Service
+  # ==========================================
+
+  notification-service:
+    name: Notification Service
+
+    uses: ./.github/workflows/reusable-service-build.yml
+
+    with:
+      service_name: notification-service
+      service_path: notification-service
+      ecr_repository: prod-notification-service
+
+  # ==========================================
+  # Update Kubernetes image tags
+  # ==========================================
+
+  update-kubernetes-manifests:
+    name: Update Kubernetes Manifests
+    runs-on: ubuntu-latest
+
+    needs:
+      - auth-service
+      - ride-service
+      - payment-service
+      - notification-service
+
+    steps:
+      - name: Checkout latest main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Install Kustomize
+        uses: imranismail/setup-kustomize@v2
+
+      - name: Update production image tags
+        working-directory: kubernetes/environments/prod
+
+        env:
+          AUTH_IMAGE: ${{ needs.auth-service.outputs.image_uri }}
+          RIDE_IMAGE: ${{ needs.ride-service.outputs.image_uri }}
+          PAYMENT_IMAGE: ${{ needs.payment-service.outputs.image_uri }}
+          NOTIFICATION_IMAGE: ${{ needs.notification-service.outputs.image_uri }}
+
+        run: |
+          kustomize edit set image auth-service="$AUTH_IMAGE"
+          kustomize edit set image ride-service="$RIDE_IMAGE"
+          kustomize edit set image payment-service="$PAYMENT_IMAGE"
+          kustomize edit set image notification-service="$NOTIFICATION_IMAGE"
+
+      - name: Validate Kubernetes manifests
+        run: |
+          kustomize build kubernetes/environments/prod > rendered-manifests.yaml
+
+          if [ ! -s rendered-manifests.yaml ]; then
+            echo "Kustomize output is empty"
+            exit 1
+          fi
+
+          echo "Kubernetes manifests validated successfully"
+
+      - name: Show image changes
+        run: |
+          git diff -- kubernetes/environments/prod/kustomization.yaml
+
+      - name: Commit updated image tags
+        run: |
+          if git diff --quiet -- kubernetes/environments/prod/kustomization.yaml; then
+            echo "No image changes found"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add kubernetes/environments/prod/kustomization.yaml
+
+          git commit \
+            -m "chore: update production service images [skip ci]"
+
+          git pull --rebase origin main
+          git push origin main
+
+  # ==========================================
+  # Notification
+  # ==========================================
+
+  notify:
+    name: Pipeline Status
+    runs-on: ubuntu-latest
+
+    needs:
+      - auth-service
+      - ride-service
+      - payment-service
+      - notification-service
+      - update-kubernetes-manifests
+
+    if: always()
+
+    steps:
+      - name: Success notification
+        if: needs.update-kubernetes-manifests.result == 'success'
+
+        run: |
+          echo "Ride Booking CI pipeline completed successfully!"
+          echo "All four Docker images were pushed to ECR."
+          echo "Kubernetes image tags were updated."
+          echo "Argo CD can now deploy the new versions."
+
+      - name: Failure notification
+        if: needs.update-kubernetes-manifests.result != 'success'
+
+        run: |
+          echo "Ride Booking CI pipeline failed."
+          echo "Check the failed service job in GitHub Actions."
+          exit 1

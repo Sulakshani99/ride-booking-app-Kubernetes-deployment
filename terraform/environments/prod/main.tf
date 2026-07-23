@@ -77,6 +77,29 @@ module "messaging" {
   }
 }
 
+module "github_actions" {
+  source = "../../modules/aws/github-actions"
+
+  environment       = "prod"
+  github_owner      = "Sulakshani99"
+  github_repository = "ride-booking-app-Kubernetes-deployment"
+  github_branch     = "main"
+  aws_region        = "us-east-1"
+
+  ecr_repository_names = [
+    "prod-auth-service",
+    "prod-ride-service",
+    "prod-payment-service",
+    "prod-notification-service"
+  ]
+
+  tags = {
+    Project     = "ridebooking"
+    Environment = "prod"
+    ManagedBy   = "Terraform"
+  }
+}
+
 resource "aws_iam_role_policy" "sqs_access" {
   name = "${var.environment}-ridebooking-app-runtime-access"
   role = module.eks.secrets_role_id
