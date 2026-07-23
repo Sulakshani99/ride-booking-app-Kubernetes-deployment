@@ -5,6 +5,7 @@ resources:
   - ../../base
   - ../../base/ingress
   - ../../base/external-secrets
+  - ../../base/autoscaling
 
 patches:
   - path: patches/db-host-patch.yaml
@@ -25,12 +26,3 @@ images:
     newName: 688978191806.dkr.ecr.us-east-1.amazonaws.com/prod-notification-service
     newTag: latest
 
-replicas:
-  - name: auth-service
-    count: 1
-  - name: ride-service
-    count: 1
-  - name: payment-service
-    count: 1
-  - name: notification-service
-    count: 1

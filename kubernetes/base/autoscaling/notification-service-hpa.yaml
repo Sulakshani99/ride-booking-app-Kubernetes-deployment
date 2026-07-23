@@ -1,16 +1,16 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: ride-service-hpa
+  name: notification-service-hpa
   namespace: ridebooking
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: ride-service
+    name: notification-service
 
   minReplicas: 1
-  maxReplicas: 5
+  maxReplicas: 3
 
   metrics:
     - type: Resource
@@ -25,12 +25,8 @@ spec:
       stabilizationWindowSeconds: 30
       policies:
         - type: Pods
-          value: 2
+          value: 1
           periodSeconds: 60
-        - type: Percent
-          value: 100
-          periodSeconds: 60
-      selectPolicy: Max
 
     scaleDown:
       stabilizationWindowSeconds: 300
