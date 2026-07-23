@@ -6,6 +6,7 @@ resources:
 - ../../base/ingress
 - ../../base/external-secrets
 - ../../base/autoscaling
+- ../../base/monitoring
 
 patches:
 - path: patches/db-host-patch.yaml
