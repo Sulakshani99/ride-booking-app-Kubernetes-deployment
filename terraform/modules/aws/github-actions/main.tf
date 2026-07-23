@@ -172,6 +172,22 @@ data "aws_iam_policy_document" "github_actions_terraform_backend" {
       "arn:aws:s3:::${var.terraform_state_bucket_name}/*"
     ]
   }
+
+  statement {
+    sid    = "AllowTerraformDynamoDBStateLock"
+    effect = "Allow"
+
+    actions = [
+      "dynamodb:DescribeTable",
+      "dynamodb:GetItem",
+      "dynamodb:PutItem",
+      "dynamodb:DeleteItem"
+    ]
+
+    resources = [
+      "arn:aws:dynamodb:${var.aws_region}:${data.aws_caller_identity.current.account_id}:table/${var.terraform_lock_table_name}"
+    ]
+  }
 }
 
 resource "aws_iam_policy" "github_actions_terraform_backend" {

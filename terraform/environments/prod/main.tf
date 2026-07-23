@@ -88,6 +88,7 @@ module "github_actions" {
   environment = var.environment
 
   terraform_state_bucket_name = "ridebooking-terraform-state-2026"
+  terraform_lock_table_name   = "ridebooking-terraform-lock"
 
   ecr_repository_names = [
     "prod-auth-service",
