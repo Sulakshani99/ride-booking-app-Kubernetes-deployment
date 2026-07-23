@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ridebooking-prod
+  namespace: argocd
+
+spec:
+  project: ridebooking
+
+  source:
+    repoURL: https://github.com/Sulakshani99/ride-booking-app-Kubernetes-deployment.git
+    targetRevision: main
+    path: kubernetes/environments/prod
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ridebooking
+
+  syncPolicy:
+    automated:              #deploy Git changes automatically.
+      prune: true           #delete Kubernetes resources that were removed from Git.
+      selfHeal: true        #restore resources when someone manually changes them inside the cluster.
+
+    syncOptions:
+      - CreateNamespace=true
