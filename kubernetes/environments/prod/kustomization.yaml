@@ -15,7 +15,7 @@ patches:
 images:
 - name: auth-service
   newName: 688978191806.dkr.ecr.us-east-1.amazonaws.com/prod-auth-service
-  newTag: f9a546c884bf53f5e2cf2783e1b756431f7ea74e
+  newTag: 8b8a718daabbd36783998d876bb7860c412007b0
 - name: notification-service
   newName: 688978191806.dkr.ecr.us-east-1.amazonaws.com/prod-notification-service
   newTag: f9a546c884bf53f5e2cf2783e1b756431f7ea74e
