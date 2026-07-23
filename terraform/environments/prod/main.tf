@@ -36,6 +36,36 @@ module "eks" {
   }
 }
 
+# =========================================================
+# Give GitHub Actions access to the EKS Kubernetes API
+# =========================================================
+
+resource "aws_eks_access_entry" "github_actions" {
+  cluster_name  = module.eks.cluster_name
+  principal_arn = module.github_actions.role_arn
+  type          = "STANDARD"
+
+  depends_on = [
+    module.eks,
+    module.github_actions
+  ]
+}
+
+resource "aws_eks_access_policy_association" "github_actions_admin" {
+  cluster_name  = module.eks.cluster_name
+  principal_arn = module.github_actions.role_arn
+
+  policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+
+  access_scope {
+    type = "cluster"
+  }
+
+  depends_on = [
+    aws_eks_access_entry.github_actions
+  ]
+}
+
 module "database" {
   source = "../../modules/aws/database"
 
