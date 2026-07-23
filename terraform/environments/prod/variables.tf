@@ -53,3 +53,10 @@ variable "ses_from" {
   type    = string
   default = "noreply@email.tasheedevops.me"
 }
+
+variable "tags" {
+  description = "Tags"
+  type        = map(string)
+  default     = {}
+}
+

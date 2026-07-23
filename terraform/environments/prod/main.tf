@@ -80,11 +80,14 @@ module "messaging" {
 module "github_actions" {
   source = "../../modules/aws/github-actions"
 
-  environment       = "prod"
   github_owner      = "Sulakshani99"
   github_repository = "ride-booking-app-Kubernetes-deployment"
   github_branch     = "main"
-  aws_region        = "us-east-1"
+
+  aws_region  = var.aws_region
+  environment = var.environment
+
+  terraform_state_bucket_name = "ridebooking-terraform-state-2026"
 
   ecr_repository_names = [
     "prod-auth-service",
@@ -93,11 +96,7 @@ module "github_actions" {
     "prod-notification-service"
   ]
 
-  tags = {
-    Project     = "ridebooking"
-    Environment = "prod"
-    ManagedBy   = "Terraform"
-  }
+  tags = var.tags
 }
 
 resource "aws_iam_role_policy" "sqs_access" {

@@ -45,13 +45,13 @@ jobs:
         image: mysql:8.0
 
         env:
-          MYSQL_ROOT_PASSWORD: ${{ env.CI_DB_PASSWORD }}
+          MYSQL_ROOT_PASSWORD: ci-password
 
         ports:
           - 3306:3306
 
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -p${{ env.CI_DB_PASSWORD }}"
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci-password"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
@@ -79,7 +79,7 @@ jobs:
           DB_HOST: 127.0.0.1
           DB_PORT: 3306
           DB_USERNAME: root
-          DB_PASSWORD: ${{ env.CI_DB_PASSWORD }}
+          DB_PASSWORD: ci-password
           JWT_SECRET: ${{ env.CI_JWT_SECRET }}
 
           AWS_ACCESS_KEY_ID: test

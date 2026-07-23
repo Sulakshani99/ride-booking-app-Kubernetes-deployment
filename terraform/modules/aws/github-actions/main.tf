@@ -1,11 +1,5 @@
 data "aws_caller_identity" "current" {}
 
-# GitHub and EKS use separate OIDC issuers.
-# EKS:
-# https://oidc.eks.<region>.amazonaws.com/id/<cluster-id>
-# GitHub:
-# https://token.actions.githubusercontent.com
-
 data "tls_certificate" "github_actions" {
   url = "https://token.actions.githubusercontent.com"
 }
@@ -48,7 +42,6 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
       ]
     }
 
-    # AWS STS must be the expected audience.
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:aud"
@@ -58,7 +51,6 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
       ]
     }
 
-    # Only the main branch of this exact repository can assume the role.
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
@@ -73,7 +65,7 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
 resource "aws_iam_role" "github_actions" {
   name = "${var.environment}-ridebooking-github-actions-role"
 
-  description = "Allows GitHub Actions to push ride-booking images to Amazon ECR."
+  description = "Allows GitHub Actions to push images to ECR and manage Terraform."
 
   assume_role_policy = data.aws_iam_policy_document.github_actions_assume_role.json
 
@@ -89,8 +81,11 @@ resource "aws_iam_role" "github_actions" {
   )
 }
 
+# =========================================================
+# ECR permissions
+# =========================================================
+
 data "aws_iam_policy_document" "github_actions_ecr" {
-  # ECR login requires GetAuthorizationToken with Resource = "*".
   statement {
     sid    = "AllowECRAuthentication"
     effect = "Allow"
@@ -102,7 +97,6 @@ data "aws_iam_policy_document" "github_actions_ecr" {
     resources = ["*"]
   }
 
-  # Limit image operations to the four ride-booking repositories.
   statement {
     sid    = "AllowRideBookingECRPushAndRead"
     effect = "Allow"
@@ -127,7 +121,7 @@ data "aws_iam_policy_document" "github_actions_ecr" {
 
 resource "aws_iam_policy" "github_actions_ecr" {
   name        = "${var.environment}-ridebooking-github-actions-ecr"
-  description = "Allows GitHub Actions to build and push ride-booking images."
+  description = "Allows GitHub Actions to push ride-booking images."
   policy      = data.aws_iam_policy_document.github_actions_ecr.json
 
   tags = merge(
@@ -143,4 +137,59 @@ resource "aws_iam_policy" "github_actions_ecr" {
 resource "aws_iam_role_policy_attachment" "github_actions_ecr" {
   role       = aws_iam_role.github_actions.name
   policy_arn = aws_iam_policy.github_actions_ecr.arn
+}
+
+# =========================================================
+# Terraform S3 backend permissions
+# =========================================================
+
+data "aws_iam_policy_document" "github_actions_terraform_backend" {
+  statement {
+    sid    = "AllowTerraformStateBucketAccess"
+    effect = "Allow"
+
+    actions = [
+      "s3:ListBucket",
+      "s3:GetBucketLocation"
+    ]
+
+    resources = [
+      "arn:aws:s3:::${var.terraform_state_bucket_name}"
+    ]
+  }
+
+  statement {
+    sid    = "AllowTerraformStateObjectAccess"
+    effect = "Allow"
+
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject"
+    ]
+
+    resources = [
+      "arn:aws:s3:::${var.terraform_state_bucket_name}/*"
+    ]
+  }
+}
+
+resource "aws_iam_policy" "github_actions_terraform_backend" {
+  name        = "${var.environment}-ridebooking-github-actions-terraform-backend"
+  description = "Allows GitHub Actions to access the Terraform S3 backend."
+  policy      = data.aws_iam_policy_document.github_actions_terraform_backend.json
+
+  tags = merge(
+    var.tags,
+    {
+      Name        = "${var.environment}-ridebooking-github-actions-terraform-backend"
+      Environment = var.environment
+      ManagedBy   = "Terraform"
+    }
+  )
+}
+
+resource "aws_iam_role_policy_attachment" "github_actions_terraform_backend" {
+  role       = aws_iam_role.github_actions.name
+  policy_arn = aws_iam_policy.github_actions_terraform_backend.arn
 }

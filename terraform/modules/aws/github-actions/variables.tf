@@ -34,3 +34,8 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "terraform_state_bucket_name" {
+  description = "S3 bucket containing the Terraform remote state"
+  type        = string
+}
