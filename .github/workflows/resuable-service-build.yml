@@ -45,13 +45,13 @@ jobs:
         image: mysql:8.0
 
         env:
-          MYSQL_ROOT_PASSWORD: ci-password
+          MYSQL_ROOT_PASSWORD: ${{ env.CI_DB_PASSWORD }}
 
         ports:
           - 3306:3306
 
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci-password"
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -p${{ env.CI_DB_PASSWORD }}"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
@@ -79,16 +79,15 @@ jobs:
           DB_HOST: 127.0.0.1
           DB_PORT: 3306
           DB_USERNAME: root
-          DB_PASSWORD: ci-password
-
-          JWT_SECRET: cmlkZS1ib29raW5nLWNpLXRlc3Qtc2VjcmV0LWtleS0xMjM0NTY3ODkwMTIzNDU2Nzg5MA==
+          DB_PASSWORD: ${{ env.CI_DB_PASSWORD }}
+          JWT_SECRET: ${{ env.CI_JWT_SECRET }}
 
           AWS_ACCESS_KEY_ID: test
           AWS_SECRET_ACCESS_KEY: test
           AWS_REGION: us-east-1
 
-          AWS_SQS_PAYMENT_QUEUE_URL: ""
-          AWS_SQS_NOTIFICATION_QUEUE_URL: ""
+          AWS_SQS_PAYMENT_QUEUE_URL: https://sqs.us-east-1.amazonaws.com/000000000000/payment-queue
+          AWS_SQS_NOTIFICATION_QUEUE_URL: https://sqs.us-east-1.amazonaws.com/000000000000/notification-queue
           AWS_SES_FROM: test@example.com
 
         run: ./mvnw clean test
