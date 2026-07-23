@@ -5,31 +5,174 @@ on:
     branches:
       - main
 
-    paths:
-      - "auth-service/**"
-      - "ride-service/**"
-      - "payment-service/**"
-      - "notification-service/**"
-      - ".github/workflows/ci.yml"
-      - ".github/workflows/reusable-service-build.yml"
-
+  # Allows you to run the complete pipeline manually.
   workflow_dispatch:
 
 permissions:
   contents: write
   id-token: write
 
+# Prevent two main-branch pipeline runs from updating manifests simultaneously.
 concurrency:
-  group: ridebooking-production
+  group: ride-booking-ci-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  # ==========================================
-  # Auth Service
-  # ==========================================
+  # =========================================================
+  # 1. Detect changed services
+  # =========================================================
+  detect-changes:
+    name: Detect Changed Services
+    runs-on: ubuntu-latest
 
+    outputs:
+      auth: ${{ steps.changes.outputs.auth }}
+      ride: ${{ steps.changes.outputs.ride }}
+      payment: ${{ steps.changes.outputs.payment }}
+      notification: ${{ steps.changes.outputs.notification }}
+      shared: ${{ steps.changes.outputs.shared }}
+      any_service: ${{ steps.changes.outputs.any_service }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed paths
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # ---------------------------------------------------
+          # Manual run: build all services
+          # ---------------------------------------------------
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "This is a manually triggered workflow."
+            echo "All services will be built."
+
+            echo "auth=true" >> "$GITHUB_OUTPUT"
+            echo "ride=true" >> "$GITHUB_OUTPUT"
+            echo "payment=true" >> "$GITHUB_OUTPUT"
+            echo "notification=true" >> "$GITHUB_OUTPUT"
+            echo "shared=true" >> "$GITHUB_OUTPUT"
+            echo "any_service=true" >> "$GITHUB_OUTPUT"
+
+            exit 0
+          fi
+
+          BEFORE_SHA="${{ github.event.before }}"
+          CURRENT_SHA="${{ github.sha }}"
+
+          echo "Previous commit: $BEFORE_SHA"
+          echo "Current commit:  $CURRENT_SHA"
+
+          # ---------------------------------------------------
+          # Find files changed by this push
+          # ---------------------------------------------------
+          if [[ -z "$BEFORE_SHA" || \
+                "$BEFORE_SHA" == "0000000000000000000000000000000000000000" ]]; then
+
+            echo "Previous commit is unavailable."
+            echo "Treating all files in the current commit as changed."
+
+            CHANGED_FILES="$(git ls-tree -r --name-only "$CURRENT_SHA")"
+          else
+            CHANGED_FILES="$(git diff --name-only "$BEFORE_SHA" "$CURRENT_SHA")"
+          fi
+
+          echo "----------------------------------------"
+          echo "Changed files"
+          echo "----------------------------------------"
+
+          if [[ -z "$CHANGED_FILES" ]]; then
+            echo "No changed files found."
+          else
+            echo "$CHANGED_FILES"
+          fi
+
+          AUTH=false
+          RIDE=false
+          PAYMENT=false
+          NOTIFICATION=false
+          SHARED=false
+
+          # ---------------------------------------------------
+          # Detect service code changes
+          # ---------------------------------------------------
+          if grep -qE '^auth-service/' <<< "$CHANGED_FILES"; then
+            AUTH=true
+          fi
+
+          if grep -qE '^ride-service/' <<< "$CHANGED_FILES"; then
+            RIDE=true
+          fi
+
+          if grep -qE '^payment-service/' <<< "$CHANGED_FILES"; then
+            PAYMENT=true
+          fi
+
+          if grep -qE '^notification-service/' <<< "$CHANGED_FILES"; then
+            NOTIFICATION=true
+          fi
+
+          # ---------------------------------------------------
+          # Detect files affecting every service build
+          #
+          # Do not include all Kubernetes files here.
+          # Kubernetes-only changes can be handled by Argo CD
+          # without rebuilding Docker images.
+          # ---------------------------------------------------
+          if grep -qE \
+            '^(\.github/workflows/reusable-service-build\.yml|pom\.xml$)' \
+            <<< "$CHANGED_FILES"; then
+            SHARED=true
+          fi
+
+          # A shared build change requires every service.
+          if [[ "$SHARED" == "true" ]]; then
+            AUTH=true
+            RIDE=true
+            PAYMENT=true
+            NOTIFICATION=true
+          fi
+
+          ANY_SERVICE=false
+
+          if [[ "$AUTH" == "true" || \
+                "$RIDE" == "true" || \
+                "$PAYMENT" == "true" || \
+                "$NOTIFICATION" == "true" ]]; then
+            ANY_SERVICE=true
+          fi
+
+          echo "----------------------------------------"
+          echo "Change detection result"
+          echo "----------------------------------------"
+          echo "auth=$AUTH"
+          echo "ride=$RIDE"
+          echo "payment=$PAYMENT"
+          echo "notification=$NOTIFICATION"
+          echo "shared=$SHARED"
+          echo "any_service=$ANY_SERVICE"
+
+          echo "auth=$AUTH" >> "$GITHUB_OUTPUT"
+          echo "ride=$RIDE" >> "$GITHUB_OUTPUT"
+          echo "payment=$PAYMENT" >> "$GITHUB_OUTPUT"
+          echo "notification=$NOTIFICATION" >> "$GITHUB_OUTPUT"
+          echo "shared=$SHARED" >> "$GITHUB_OUTPUT"
+          echo "any_service=$ANY_SERVICE" >> "$GITHUB_OUTPUT"
+
+  # =========================================================
+  # 2. Build Auth Service
+  # =========================================================
   auth-service:
     name: Auth Service
+    needs:
+      - detect-changes
+
+    if: needs.detect-changes.outputs.auth == 'true'
 
     uses: ./.github/workflows/reusable-service-build.yml
 
@@ -38,12 +181,17 @@ jobs:
       service_path: auth-service
       ecr_repository: prod-auth-service
 
-  # ==========================================
-  # Ride Service
-  # ==========================================
+    secrets: inherit
 
+  # =========================================================
+  # 3. Build Ride Service
+  # =========================================================
   ride-service:
     name: Ride Service
+    needs:
+      - detect-changes
+
+    if: needs.detect-changes.outputs.ride == 'true'
 
     uses: ./.github/workflows/reusable-service-build.yml
 
@@ -52,12 +200,17 @@ jobs:
       service_path: ride-service
       ecr_repository: prod-ride-service
 
-  # ==========================================
-  # Payment Service
-  # ==========================================
+    secrets: inherit
 
+  # =========================================================
+  # 4. Build Payment Service
+  # =========================================================
   payment-service:
     name: Payment Service
+    needs:
+      - detect-changes
+
+    if: needs.detect-changes.outputs.payment == 'true'
 
     uses: ./.github/workflows/reusable-service-build.yml
 
@@ -66,12 +219,17 @@ jobs:
       service_path: payment-service
       ecr_repository: prod-payment-service
 
-  # ==========================================
-  # Notification Service
-  # ==========================================
+    secrets: inherit
 
+  # =========================================================
+  # 5. Build Notification Service
+  # =========================================================
   notification-service:
     name: Notification Service
+    needs:
+      - detect-changes
+
+    if: needs.detect-changes.outputs.notification == 'true'
 
     uses: ./.github/workflows/reusable-service-build.yml
 
@@ -80,19 +238,43 @@ jobs:
       service_path: notification-service
       ecr_repository: prod-notification-service
 
-  # ==========================================
-  # Update Kubernetes image tags
-  # ==========================================
+    secrets: inherit
 
+  # =========================================================
+  # 6. Update Kubernetes production image references
+  # =========================================================
   update-kubernetes-manifests:
     name: Update Kubernetes Manifests
-    runs-on: ubuntu-latest
 
     needs:
+      - detect-changes
       - auth-service
       - ride-service
       - payment-service
       - notification-service
+
+    # Run only when:
+    # 1. Change detection succeeded.
+    # 2. No selected service build failed.
+    # 3. At least one service built successfully.
+    #
+    # always() is needed because unchanged services are skipped.
+    if: |
+      always() &&
+      !cancelled() &&
+      needs.detect-changes.result == 'success' &&
+      needs.auth-service.result != 'failure' &&
+      needs.ride-service.result != 'failure' &&
+      needs.payment-service.result != 'failure' &&
+      needs.notification-service.result != 'failure' &&
+      (
+        needs.auth-service.result == 'success' ||
+        needs.ride-service.result == 'success' ||
+        needs.payment-service.result == 'success' ||
+        needs.notification-service.result == 'success'
+      )
+
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout latest main branch
@@ -101,66 +283,158 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Install Kustomize
-        uses: imranismail/setup-kustomize@v2
-
-      - name: Update production image tags
-        working-directory: kubernetes/environments/prod
-
+      - name: Display received image outputs
+        shell: bash
         env:
           AUTH_IMAGE: ${{ needs.auth-service.outputs.image_uri }}
           RIDE_IMAGE: ${{ needs.ride-service.outputs.image_uri }}
           PAYMENT_IMAGE: ${{ needs.payment-service.outputs.image_uri }}
           NOTIFICATION_IMAGE: ${{ needs.notification-service.outputs.image_uri }}
-
         run: |
-          kustomize edit set image auth-service="$AUTH_IMAGE"
-          kustomize edit set image ride-service="$RIDE_IMAGE"
-          kustomize edit set image payment-service="$PAYMENT_IMAGE"
-          kustomize edit set image notification-service="$NOTIFICATION_IMAGE"
+          echo "Auth image:         ${AUTH_IMAGE:-not built}"
+          echo "Ride image:         ${RIDE_IMAGE:-not built}"
+          echo "Payment image:      ${PAYMENT_IMAGE:-not built}"
+          echo "Notification image: ${NOTIFICATION_IMAGE:-not built}"
 
-      - name: Validate Kubernetes manifests
+      - name: Update changed service images
+        shell: bash
+        env:
+          AUTH_IMAGE: ${{ needs.auth-service.outputs.image_uri }}
+          RIDE_IMAGE: ${{ needs.ride-service.outputs.image_uri }}
+          PAYMENT_IMAGE: ${{ needs.payment-service.outputs.image_uri }}
+          NOTIFICATION_IMAGE: ${{ needs.notification-service.outputs.image_uri }}
         run: |
-          kustomize build kubernetes/environments/prod > rendered-manifests.yaml
+          set -euo pipefail
 
-          if [ ! -s rendered-manifests.yaml ]; then
-            echo "Kustomize output is empty"
+          MANIFEST_DIRECTORY="kubernetes/environments/prod"
+
+          if [[ ! -d "$MANIFEST_DIRECTORY" ]]; then
+            echo "::error::Kubernetes production directory does not exist:"
+            echo "$MANIFEST_DIRECTORY"
             exit 1
           fi
 
-          echo "Kubernetes manifests validated successfully"
+          update_image() {
+            local service_name="$1"
+            local repository_name="$2"
+            local new_image="$3"
 
-      - name: Show image changes
-        run: |
-          git diff -- kubernetes/environments/prod/kustomization.yaml
+            # The service was intentionally skipped.
+            if [[ -z "$new_image" ]]; then
+              echo "$service_name was not built. Its manifest will not be changed."
+              return 0
+            fi
 
-      - name: Commit updated image tags
+            echo "----------------------------------------"
+            echo "Updating $service_name"
+            echo "Repository: $repository_name"
+            echo "New image:  $new_image"
+            echo "----------------------------------------"
+
+            # Find production YAML files currently containing this ECR
+            # repository in an image declaration.
+            mapfile -t MATCHING_FILES < <(
+              grep -RIlE \
+                "^[[:space:]]*image:[[:space:]]*.*${repository_name}:" \
+                "$MANIFEST_DIRECTORY" \
+                --include="*.yaml" \
+                --include="*.yml" \
+                || true
+            )
+
+            if [[ "${#MATCHING_FILES[@]}" -eq 0 ]]; then
+              echo "::error::No production manifest containing $repository_name was found."
+              echo "Searched inside: $MANIFEST_DIRECTORY"
+              exit 1
+            fi
+
+            echo "Matching manifest files:"
+
+            for file in "${MATCHING_FILES[@]}"; do
+              echo "  - $file"
+
+              # Replace the complete image value while preserving indentation.
+              sed -i -E \
+                "s|^([[:space:]]*image:[[:space:]]*).*${repository_name}:[^[:space:]\"']+|\1${new_image}|" \
+                "$file"
+
+              if ! grep -Fq "image: $new_image" "$file"; then
+                echo "::error::Image replacement failed in $file"
+                exit 1
+              fi
+            done
+
+            echo "$service_name image was updated successfully."
+          }
+
+          update_image \
+            "auth-service" \
+            "prod-auth-service" \
+            "${AUTH_IMAGE:-}"
+
+          update_image \
+            "ride-service" \
+            "prod-ride-service" \
+            "${RIDE_IMAGE:-}"
+
+          update_image \
+            "payment-service" \
+            "prod-payment-service" \
+            "${PAYMENT_IMAGE:-}"
+
+          update_image \
+            "notification-service" \
+            "prod-notification-service" \
+            "${NOTIFICATION_IMAGE:-}"
+
+          echo "----------------------------------------"
+          echo "Updated image declarations"
+          echo "----------------------------------------"
+
+          grep -RInE \
+            "^[[:space:]]*image:" \
+            "$MANIFEST_DIRECTORY" \
+            --include="*.yaml" \
+            --include="*.yml" \
+            || true
+
+      - name: Commit and push manifest changes
+        shell: bash
         run: |
-          if git diff --quiet -- kubernetes/environments/prod/kustomization.yaml; then
-            echo "No image changes found"
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add kubernetes/environments/prod
+
+          if git diff --cached --quiet; then
+            echo "No Kubernetes manifest changes were produced."
             exit 0
           fi
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git add kubernetes/environments/prod/kustomization.yaml
+          echo "Manifest changes:"
+          git diff --cached --stat
+          git diff --cached
 
           git commit \
             -m "chore: update production service images [skip ci]"
 
+          # Rebase on the latest main branch before pushing.
+          # This reduces failures when another commit reaches main
+          # while the image builds are running.
           git pull --rebase origin main
-          git push origin main
+          git push origin HEAD:main
 
-  # ==========================================
-  # Notification
-  # ==========================================
-
-  notify:
+  # =========================================================
+  # 7. Final pipeline status
+  # =========================================================
+  pipeline-status:
     name: Pipeline Status
-    runs-on: ubuntu-latest
 
     needs:
+      - detect-changes
       - auth-service
       - ride-service
       - payment-service
@@ -168,21 +442,47 @@ jobs:
       - update-kubernetes-manifests
 
     if: always()
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Success notification
-        if: needs.update-kubernetes-manifests.result == 'success'
-
+      - name: Display job results
+        shell: bash
         run: |
-          echo "Ride Booking CI pipeline completed successfully!"
-          echo "All four Docker images were pushed to ECR."
-          echo "Kubernetes image tags were updated."
-          echo "Argo CD can now deploy the new versions."
+          echo "Detect changes:      ${{ needs.detect-changes.result }}"
+          echo "Auth service:        ${{ needs.auth-service.result }}"
+          echo "Ride service:        ${{ needs.ride-service.result }}"
+          echo "Payment service:     ${{ needs.payment-service.result }}"
+          echo "Notification service:${{ needs.notification-service.result }}"
+          echo "Manifest update:     ${{ needs.update-kubernetes-manifests.result }}"
 
-      - name: Failure notification
-        if: needs.update-kubernetes-manifests.result != 'success'
-
+      - name: Check pipeline result
+        shell: bash
         run: |
-          echo "Ride Booking CI pipeline failed."
-          echo "Check the failed service job in GitHub Actions."
-          exit 1
+          set -euo pipefail
+
+          RESULTS=(
+            "${{ needs.detect-changes.result }}"
+            "${{ needs.auth-service.result }}"
+            "${{ needs.ride-service.result }}"
+            "${{ needs.payment-service.result }}"
+            "${{ needs.notification-service.result }}"
+            "${{ needs.update-kubernetes-manifests.result }}"
+          )
+
+          for result in "${RESULTS[@]}"; do
+            if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then
+              echo "::error::Pipeline failed because a job returned: $result"
+              exit 1
+            fi
+          done
+
+          if [[ "${{ needs.detect-changes.outputs.any_service }}" != "true" ]]; then
+            echo "No microservice code changed."
+            echo "No Docker image build was required."
+          else
+            echo "All required service builds completed successfully."
+          fi
+
+          echo "Skipped jobs represent unchanged services."
+          echo "Pipeline completed successfully."
+
