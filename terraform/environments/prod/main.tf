@@ -24,7 +24,7 @@ module "eks" {
   vpc_id             = module.foundation.vpc_id
   private_subnet_ids = module.foundation.private_subnet_ids
 
-  node_desired_size   = 3
+  node_desired_size   = 4
   node_max_size       = 6
   node_min_size       = 2
   node_instance_types = ["t3.small"]
