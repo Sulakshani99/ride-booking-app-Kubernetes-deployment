@@ -13,11 +13,9 @@ spec:
     path: kubernetes/environments/prod
 
   destination:
-    - namespace: ridebooking
-      server: https://kubernetes.default.svc
+    namespace: ridebooking
+    server: https://kubernetes.default.svc
 
-    - namespace: monitoring
-      server: https://kubernetes.default.svc
 
   syncPolicy:
     automated:              #deploy Git changes automatically.
