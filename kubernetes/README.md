@@ -1,220 +1,226 @@
-# Ride Booking App - Kubernetes Deployment
+# Kubernetes Configuration
 
-This directory contains Kubernetes manifests organized using **Kustomize** for environment-specific deployments.
+This directory contains all Kubernetes manifests used to deploy the Ride Booking Application on **Amazon Elastic Kubernetes Service (EKS)**.
+
+The project follows a **Kustomize base + overlays** structure, enabling reusable Kubernetes resources while maintaining separate configurations for **Development**, **Staging**, and **Production** environments.
+
+---
 
 ## Directory Structure
 
-```
+```text
 kubernetes/
-├── base/                              # Base manifests shared across all environments
-│   ├── infrastructure/                # Cluster infrastructure (namespace, serviceaccount)
-│   │   ├── namespace.yaml
-│   │   └── serviceaccount.yaml
-│   ├── services/                      # Microservices deployments
-│   │   ├── mysql/
-│   │   │   ├── deployment.yaml
-│   │   │   ├── service.yaml
-│   │   │   └── pvc.yaml
-│   │   ├── auth-service/
-│   │   │   ├── deployment.yaml
-│   │   │   ├── service.yaml
-│   │   │   └── configmap.yaml
-│   │   ├── ride-service/
-│   │   │   ├── deployment.yaml
-│   │   │   ├── service.yaml
-│   │   │   └── configmap.yaml
-│   │   ├── payment-service/
-│   │   │   ├── deployment.yaml
-│   │   │   ├── service.yaml
-│   │   │   └── configmap.yaml
-│   │   └── notification-service/
-│   │       ├── deployment.yaml
-│   │       ├── service.yaml
-│   │       └── configmap.yaml
-│   └── kustomization.yaml             # Base kustomization that includes all resources
-└── environments/                      # Environment-specific overrides
-    ├── dev/
-    │   └── kustomization.yaml         # Dev environment (image tags, replicas)
-    ├── staging/
-    │   └── kustomization.yaml         # Staging environment
-    └── prod/
-        └── kustomization.yaml         # Prod environment (higher replicas)
+├── base/
+│   ├── apps/                 # Application deployments
+│   ├── autoscaling/          # Horizontal Pod Autoscalers
+│   ├── config/              # ConfigMaps
+│   ├── external-secrets/    # External Secrets configuration
+│   ├── ingress/             # ALB Ingress resources
+│   ├── monitoring/          # ServiceMonitors & Prometheus Rules
+│   ├── namespace/           # Namespace definition
+│   ├── services/            # Kubernetes Services
+│   └── kustomization.yaml
+│
+├── environments/
+│   ├── dev/
+│   ├── staging/
+│   └── prod/
+│
+└── README.md
 ```
 
-## Quick Start
+---
 
-### Prerequisites
+## Application Architecture
 
-- `kubectl` configured to access your cluster
-- `kustomize` installed (or use `kubectl kustomize`)
+The Ride Booking Application consists of four Spring Boot microservices deployed on Kubernetes.
 
-### Deploy to Dev Environment
+- **Auth Service** – User authentication and authorization
+- **Ride Service** – Ride booking and management
+- **Payment Service** – Payment processing
+- **Notification Service** – Email and notification handling
+
+The services communicate within the Kubernetes cluster and connect securely to an Amazon RDS MySQL database.
+
+---
+
+## Base Configuration
+
+The `base` directory contains reusable Kubernetes manifests shared by all environments.
+
+Resources include:
+
+- Deployments
+- Services
+- ConfigMaps
+- Namespace
+- ALB Ingress
+- Horizontal Pod Autoscalers (HPA)
+- External Secrets
+- Monitoring resources
+- Kustomization file
+
+These manifests define the common application configuration while keeping environment-specific settings separate.
+
+---
+
+## Environment Overlays
+
+The `environments` directory contains Kustomize overlays for each deployment environment.
+
+| Environment | Purpose |
+|-------------|---------|
+| **dev** | Development and testing |
+| **staging** | Pre-production validation |
+| **prod** | Production deployment |
+
+Each overlay customizes the shared base configuration by applying environment-specific values such as:
+
+- Docker image tags
+- Replica counts
+- Resource requests and limits
+- Environment variables
+- Configuration overrides
+
+This approach minimizes duplication while ensuring consistency across environments.
+
+---
+
+## Secrets Management
+
+Sensitive information is **never stored in Git**.
+
+Application secrets are securely managed using:
+
+- AWS Secrets Manager
+- External Secrets Operator
+
+The External Secrets Operator automatically synchronizes secrets from AWS Secrets Manager into Kubernetes Secrets, allowing applications to securely access database credentials and other sensitive configuration.
+
+---
+
+## Ingress
+
+Application traffic is routed through an **AWS Application Load Balancer (ALB)** using Kubernetes Ingress resources.
+
+The ingress configuration provides a single entry point for external traffic and routes requests to the appropriate microservice.
+
+---
+
+## Autoscaling
+
+Each microservice is configured with a **Horizontal Pod Autoscaler (HPA)**.
+
+The HPA automatically increases or decreases the number of running pods based on resource utilization, improving application performance and resource efficiency.
+
+---
+
+## Monitoring
+
+The project includes Kubernetes resources for monitoring and observability using:
+
+- Prometheus
+- Grafana
+- ServiceMonitors
+- Prometheus Rules
+
+Application metrics are exposed using Spring Boot Actuator and Micrometer, collected by Prometheus, and visualized through Grafana dashboards.
+
+---
+
+## GitOps Deployment Workflow
+
+Application deployments follow a GitOps workflow using GitHub Actions and Argo CD.
+
+```text
+Developer
+     │
+     ▼
+GitHub Repository
+     │
+     ▼
+GitHub Actions
+(Build & Push Docker Images)
+     │
+     ▼
+Update Kubernetes Manifests
+     │
+     ▼
+Argo CD
+     │
+     ▼
+Amazon EKS
+```
+
+Argo CD continuously monitors this repository and automatically synchronizes Kubernetes manifests with the EKS cluster whenever changes are detected.
+
+---
+
+## Deployment Strategy
+
+The application uses Kubernetes **Rolling Update** deployments, ensuring minimal downtime during application updates by gradually replacing old pods with new ones.
+
+---
+
+## Deploy Using Kustomize
+
+Deploy a specific environment:
+
+### Development
 
 ```bash
-# Preview the manifest
-kustomize build kubernetes/environments/dev
+kubectl apply -k environments/dev
+```
 
-# Apply to dev cluster
-kubectl apply -k kubernetes/environments/dev/
+### Staging
 
-# Verify deployment
+```bash
+kubectl apply -k environments/staging
+```
+
+### Production
+
+```bash
+kubectl apply -k environments/prod
+```
+
+---
+
+## Verify Deployment
+
+Check application pods:
+
+```bash
 kubectl get pods -n ridebooking
+```
+
+Check services:
+
+```bash
 kubectl get svc -n ridebooking
 ```
 
-### Deploy to Prod Environment
+Check ingress:
 
 ```bash
-# Preview the manifest
-kustomize build kubernetes/environments/prod
-
-# Apply to prod cluster
-kubectl apply -k kubernetes/environments/prod/
-
-# Verify deployment
-kubectl get pods -n ridebooking
-kubectl get svc -n ridebooking
+kubectl get ingress -n ridebooking
 ```
 
-## Configuration Details
-
-### Base Configuration
-
-The `base/kustomization.yaml` includes:
-- **Infrastructure**: namespace (`ridebooking`), service account
-- **Database**: MySQL deployment with PVC for persistent storage
-- **Services**: Auth, Ride, Payment, and Notification microservices
-
-### Environment-Specific Overrides
-
-Each environment directory (`dev`, `staging`, `prod`) uses Kustomize to override:
-- **Image tags**: e.g., `auth-service:dev`, `auth-service:prod`
-- **Replicas**: Dev=1, Staging=1, Prod=2+ replicas for HA
-
-### Secrets Management
-
-Dev uses generated Kubernetes Secrets from `kubernetes/environments/dev/kustomization.yaml`.
-
-Staging/prod use AWS Secrets Manager through External Secrets Operator:
-
-- Terraform creates `${environment}/ridebooking/db`
-- Terraform creates `${environment}/ridebooking/app`
-- `SecretStore` authenticates to AWS using IRSA and `ridebooking-sa`
-- `ExternalSecret` creates Kubernetes `db-secret` and `app-runtime-secret`
-
-Install External Secrets Operator before applying staging/prod app manifests:
+Check Horizontal Pod Autoscalers:
 
 ```bash
-helm repo add external-secrets https://charts.external-secrets.io
-helm repo update
-helm install external-secrets external-secrets/external-secrets \
-  -n external-secrets \
-  --create-namespace \
-  --set installCRDs=true
+kubectl get hpa -n ridebooking
 ```
 
-Pass secret values to Terraform without committing them:
+---
 
-```bash
-terraform -chdir=terraform/environments/prod apply \
-  -var="db_password=<strong-db-password>" \
-  -var="jwt_secret=<base64-jwt-secret>" \
-  -var="admin_password=<strong-admin-password>"
-```
+## Related Components
 
-### ConfigMaps
+This Kubernetes configuration integrates with the following project components:
 
-Each microservice has a `*-service-config` ConfigMap containing:
-- `DB_HOST`: Kubernetes service DNS (e.g., `mysql`)
-- `DB_PORT`: 3306
-- `DB_USERNAME`: root
-- `SPRING_JPA_*`: JPA/Hibernate settings
-
-### Persistent Storage
-
-MySQL uses a PVC (`mysql-pvc`) with 5Gi storage. For production:
-- Consider using a managed database (RDS, Cloud SQL) instead
-- Or use a StorageClass with backup policies
-
-## Resource Requests/Limits
-
-Each service is configured with:
-- **Requests**: 250m CPU, 512Mi memory (guaranteed)
-- **Limits**: 500m CPU, 1Gi memory (max)
-
-Adjust these based on your workload testing.
-
-## Image Registry
-
-Currently, image names use local registry placeholders. Update them:
-
-```bash
-# For Docker Hub
-- name: auth-service
-  newName: your-dockerhub-username/auth-service
-  newTag: v1.0
-
-# For private registry
-- name: auth-service
-  newName: registry.example.com/auth-service
-  newTag: v1.0
-```
-
-Update the `image:` fields in `base/services/*/deployment.yaml`.
-
-## Networking
-
-- Services are exposed via `ClusterIP` (internal only)
-- Staging/prod include an AWS ALB `Ingress` from `base/ingress`
-- Terraform installs the AWS Load Balancer Controller for staging/prod
-
-Before applying staging/prod manifests, replace placeholders in the overlay with Terraform outputs:
-
-```bash
-terraform -chdir=terraform/environments/prod output
-```
-
-Use:
-- `irsa_service_account_role_arn` in `patches/aws-serviceaccount-patch.yaml`
-- `db_endpoint` host part in the RDS ConfigMap patch
-- `ecr_repository_urls` in `images[].newName`
-- `payment_queue_url` and `notification_queue_url` in `app-runtime-secret`
-
-## Troubleshooting
-
-### Check pod logs
-
-```bash
-kubectl logs -n ridebooking deployment/auth-service
-kubectl logs -n ridebooking deployment/ride-service
-```
-
-### Check service connectivity
-
-```bash
-kubectl exec -it -n ridebooking pod/ride-service-xxx -- /bin/sh
-# Inside the pod:
-curl http://mysql:3306
-curl http://auth-service:8081/health
-```
-
-### Delete and redeploy
-
-```bash
-kubectl delete -k kubernetes/environments/dev/
-kubectl apply -k kubernetes/environments/dev/
-```
-
-## Future Enhancements
-
-- Add `HorizontalPodAutoscaler` for auto-scaling based on CPU/memory
-- Integrate with External Secrets Operator for secure secret management
-- Add `NetworkPolicy` for network segmentation
-- Add `PodDisruptionBudget` for HA
-- Setup `cert-manager` for TLS/SSL certificates
-- Configure monitoring with Prometheus & Grafana
-
-## References
-
-- [Kustomize Documentation](https://kustomize.io/)
-- [Kubernetes Best Practices](https://kubernetes.io/docs/concepts/configuration/overview/)
+- **Terraform** – Provisions AWS infrastructure (VPC, EKS, RDS, ECR, IAM)
+- **GitHub Actions** – Builds, tests, and publishes Docker images
+- **Amazon ECR** – Stores Docker container images
+- **Argo CD** – Deploys applications using GitOps
+- **AWS Secrets Manager** – Securely stores application secrets
+- **Prometheus & Grafana** – Monitor application and cluster health
