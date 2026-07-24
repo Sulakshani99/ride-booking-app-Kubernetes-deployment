@@ -10,37 +10,53 @@ spec:
     - name: ridebooking.rules
       rules:
         - alert: AuthServiceDown
-          expr: up{service="auth-service"} == 0
+          expr: |
+            absent(up{namespace="ridebooking", service="auth-service"})
+            or
+            up{namespace="ridebooking", service="auth-service"} == 0
           for: 2m
           labels:
             severity: critical
+            service: auth-service
           annotations:
             summary: auth-service is down
             description: Prometheus cannot scrape auth-service for more than 2 minutes.
 
         - alert: RideServiceDown
-          expr: up{service="ride-service"} == 0
+          expr: |
+            absent(up{namespace="ridebooking", service="ride-service"})
+            or
+            up{namespace="ridebooking", service="ride-service"} == 0
           for: 2m
           labels:
             severity: critical
+            service: ride-service
           annotations:
             summary: ride-service is down
             description: Prometheus cannot scrape ride-service for more than 2 minutes.
 
         - alert: PaymentServiceDown
-          expr: up{service="payment-service"} == 0
+          expr: |
+            absent(up{namespace="ridebooking", service="payment-service"})
+            or
+            up{namespace="ridebooking", service="payment-service"} == 0
           for: 2m
           labels:
             severity: critical
+            service: payment-service
           annotations:
             summary: payment-service is down
             description: Prometheus cannot scrape payment-service for more than 2 minutes.
 
         - alert: NotificationServiceDown
-          expr: up{service="notification-service"} == 0
+          expr: |
+            absent(up{namespace="ridebooking", service="notification-service"})
+            or
+            up{namespace="ridebooking", service="notification-service"} == 0
           for: 2m
           labels:
             severity: critical
+            service: notification-service
           annotations:
             summary: notification-service is down
             description: Prometheus cannot scrape notification-service for more than 2 minutes.
