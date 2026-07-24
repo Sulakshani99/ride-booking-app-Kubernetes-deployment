@@ -1,0 +1,48 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ridebooking-alerts
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: ridebooking.rules
+      rules:
+        - alert: AuthServiceDown
+          expr: up{service="auth-service"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: auth-service is down
+            description: Prometheus cannot scrape auth-service for more than 2 minutes.
+
+        - alert: RideServiceDown
+          expr: up{service="ride-service"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: ride-service is down
+            description: Prometheus cannot scrape ride-service for more than 2 minutes.
+
+        - alert: PaymentServiceDown
+          expr: up{service="payment-service"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: payment-service is down
+            description: Prometheus cannot scrape payment-service for more than 2 minutes.
+
+        - alert: NotificationServiceDown
+          expr: up{service="notification-service"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: notification-service is down
+            description: Prometheus cannot scrape notification-service for more than 2 minutes.
+
+            

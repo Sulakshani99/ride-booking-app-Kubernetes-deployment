@@ -6,3 +6,4 @@ resources:
   - ride-service-monitor.yaml
   - payment-service-monitor.yaml
   - notification-service-monitor.yaml
+  - prometheus-rules.yaml
