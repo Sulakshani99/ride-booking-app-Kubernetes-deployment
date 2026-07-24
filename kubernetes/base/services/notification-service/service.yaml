@@ -3,11 +3,14 @@ kind: Service
 metadata:
   name: notification-service
   namespace: ridebooking
+  labels:
+    app: notification-service
 spec:
   selector:
     app: notification-service
   ports:
-    - port: 8084
+    - name: http
+      port: 8084
       targetPort: 8084
       protocol: TCP
   type: ClusterIP

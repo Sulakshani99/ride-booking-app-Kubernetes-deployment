@@ -3,11 +3,14 @@ kind: Service
 metadata:
   name: ride-service
   namespace: ridebooking
+  labels:
+    app: ride-service
 spec:
   selector:
     app: ride-service
   ports:
-    - port: 8082
+    - name: http
+      port: 8082
       targetPort: 8082
       protocol: TCP
   type: ClusterIP
