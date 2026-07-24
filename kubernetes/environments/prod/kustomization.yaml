@@ -19,10 +19,10 @@ images:
   newTag: af6d6d091df1a9e4d1b2af05b0dd62a35d1b58dd
 - name: notification-service
   newName: 688978191806.dkr.ecr.us-east-1.amazonaws.com/prod-notification-service
-  newTag: f9a546c884bf53f5e2cf2783e1b756431f7ea74e
+  newTag: 036bcd41ff2344dbc1ce6b000513c12850180b47
 - name: payment-service
   newName: 688978191806.dkr.ecr.us-east-1.amazonaws.com/prod-payment-service
-  newTag: f9a546c884bf53f5e2cf2783e1b756431f7ea74e
+  newTag: 036bcd41ff2344dbc1ce6b000513c12850180b47
 - name: ride-service
   newName: 688978191806.dkr.ecr.us-east-1.amazonaws.com/prod-ride-service
-  newTag: f9a546c884bf53f5e2cf2783e1b756431f7ea74e
+  newTag: 036bcd41ff2344dbc1ce6b000513c12850180b47
